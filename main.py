@@ -1,8 +1,7 @@
+
 from fastapi import FastAPI, HTTPException
 import httpx
 from collections import Counter
-import os
-import traceback
 
 app = FastAPI()
 
@@ -53,7 +52,6 @@ def du_doan_sunwin_200k_vip(totals_list):
     last_6 = totals_list[-6:]
     last_total = totals_list[-1]
     last_result = get_tai_xiu(last_total)
-
     def rule_special_pattern():
         if last_4[0] == last_4[2] == last_4[3] and last_4[0] != last_4[1]:
             return "Tài", 85, f"Cầu đặc biệt {last_4}. Bắt Tài theo công thức đặc biệt."
@@ -72,7 +70,6 @@ def du_doan_sunwin_200k_vip(totals_list):
     def rule_repeat_pattern():
         if last_3[0] == last_3[2] or last_3[1] == last_3[2]:
             return "Xỉu" if last_result == "Tài" else "Tài", 77, f"Cầu lặp dạng {last_3}. Bẻ cầu theo dạng A-B-B hoặc A-B-A."
-
     rules = [rule_special_pattern, rule_sandwich, rule_special_numbers, rule_frequent_repeat, rule_repeat_pattern]
     for rule in rules:
         result = rule()
@@ -98,18 +95,18 @@ def phan_tich_cau(lst_ket_qua, lst_tong):
 # ==== ĐỌC PATTERN ====
 def load_pattern_data():
     patterns = []
-    file_path = "mau_cau_10000.txt"
-    if not os.path.exists(file_path):
-        return patterns
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            parts = line.strip().split(",")
-            if len(parts) == 2:
-                pattern, result = parts
-                pattern = pattern.strip().upper()
-                result = result.strip().upper()
-                if set(pattern).issubset({"T", "X"}) and result in {"T", "X"}:
-                    patterns.append((pattern, result))
+    try:
+        with open("mau_cau_10000.txt", "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split(",")
+                if len(parts) == 2:
+                    pattern, result = parts
+                    pattern = pattern.strip().upper()
+                    result = result.strip().upper()
+                    if set(pattern).issubset({"T", "X"}) and result in {"T", "X"}:
+                        patterns.append((pattern, result))
+    except:
+        pass
     return patterns
 
 def thong_ke_tu_pattern(patterns):
@@ -141,15 +138,13 @@ async def get_prediction():
             r = await client.get("https://wanglinapiws.up.railway.app/api/taixiu?limit=10")
             data = r.json()
 
-        if not data:
-            raise HTTPException(status_code=500, detail="Dữ liệu trả về rỗng từ API nguồn.")
-
         last = data[-1]
         dice = last.get("dice", [None, None, None])
         phien = last["session"]
         totals = [item["total"] for item in data]
         results = [item["result"] for item in data]
 
+        # Ưu tiên thuật toán 2
         du_doan, tin_cay, chi_tiet = du_doan_sunwin_200k_vip(totals)
         patterns = load_pattern_data()
         dung, sai, tong = thong_ke_tu_pattern(patterns)
@@ -174,5 +169,4 @@ async def get_prediction():
         }
 
     except Exception as e:
-        print("Lỗi khi xử lý API:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
