@@ -139,7 +139,7 @@ async def get_prediction():
     try:
         async with httpx.AsyncClient() as client:
             r = await client.get("https://wanglinapiws.up.railway.app/api/taixiu?limit=10")
-            data = await r.json()
+            data = r.json()
 
         if not data:
             raise HTTPException(status_code=500, detail="Dữ liệu trả về rỗng từ API nguồn.")
